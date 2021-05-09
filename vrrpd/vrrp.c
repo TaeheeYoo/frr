@@ -398,6 +398,12 @@ void vrrp_set_advertisement_interval(struct vrrp_vrouter *vr,
 	vrrp_recalculate_timers(vr->v6);
 }
 
+void vrrp_set_neigh_advertisement_interval(struct vrrp_vrouter *vr,
+					   uint16_t neigh_advertisement_interval)
+{
+	vr->neigh_advertisement_interval = neigh_advertisement_interval;
+}
+
 static bool vrrp_has_ip(struct vrrp_vrouter *vr, struct ipaddr *ip)
 {
 	struct vrrp_router *r = ip->ipa_type == IPADDR_V4 ? vr->v4 : vr->v6;
@@ -653,6 +659,7 @@ struct vrrp_vrouter *vrrp_vrouter_create(struct interface *ifp, uint8_t vrid,
 	vr->v6 = vrrp_router_create(vr, AF_INET6);
 
 	vrrp_set_advertisement_interval(vr, vd.advertisement_interval);
+	vrrp_set_neigh_advertisement_interval(vr, vd.neigh_advertisement_interval);
 
 	hash_get(vrrp_vrouters_hash, vr, hash_alloc_intern);
 
@@ -2345,6 +2352,11 @@ int vrrp_config_write_global(struct vty *vty)
 			"vrrp default advertisement-interval %u\n",
 			vd.advertisement_interval * CS2MS);
 
+	if (vd.neigh_advertisement_interval != VRRP_DEFAULT_NEIGH_ADVINT && ++writes)
+		vty_out(vty,
+			"vrrp default neigh-advertisement-interval %u\n",
+			vd.neigh_advertisement_interval * CS2MS);
+
 	if (vd.preempt_mode != VRRP_DEFAULT_PREEMPT && ++writes)
 		vty_out(vty, "%svrrp default preempt\n",
 			!vd.preempt_mode ? "no " : "");
@@ -2390,6 +2402,8 @@ void vrrp_init(void)
 	vd.priority = yang_get_default_uint8("%s/priority", VRRP_XPATH_FULL);
 	vd.advertisement_interval = yang_get_default_uint16(
 		"%s/advertisement-interval", VRRP_XPATH_FULL);
+	vd.neigh_advertisement_interval = yang_get_default_uint16(
+		"%s/neigh-advertisement-interval", VRRP_XPATH_FULL);
 	vd.preempt_mode = yang_get_default_bool("%s/preempt", VRRP_XPATH_FULL);
 	vd.accept_mode =
 		yang_get_default_bool("%s/accept-mode", VRRP_XPATH_FULL);

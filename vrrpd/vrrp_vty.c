@@ -42,6 +42,7 @@
 #define VRRP_VRID_STR "Virtual Router ID\n"
 #define VRRP_PRIORITY_STR "Virtual Router Priority\n"
 #define VRRP_ADVINT_STR "Virtual Router Advertisement Interval\n"
+#define VRRP_NEIGH_ADVINT_STR "Neighbor Advertisement Interval\n"
 #define VRRP_IP_STR "Virtual Router IP address\n"
 #define VRRP_VERSION_STR "VRRP protocol version\n"
 
@@ -203,6 +204,53 @@ void cli_show_advertisement_interval(struct vty *vty, struct lyd_node *dnode,
 
 /*
  * XPath:
+ * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/neigh-advertisement-interval
+ */
+DEFPY_YANG(vrrp_neigh_advertisement_interval,
+      vrrp_neigh_advertisement_interval_cmd,
+      "vrrp (1-255)$vrid neigh-advertisement-interval (10-40950)",
+      VRRP_STR VRRP_VRID_STR VRRP_NEIGH_ADVINT_STR
+      "Neighbor advertisement interval in milliseconds; must be multiple of 10")
+{
+	char val[20];
+
+	/* all internal computations are in centiseconds */
+	neigh_advertisement_interval /= CS2MS;
+	snprintf(val, sizeof(val), "%ld", neigh_advertisement_interval);
+	nb_cli_enqueue_change(vty, "./neigh-advertisement-interval", NB_OP_MODIFY,
+			      val);
+
+	return nb_cli_apply_changes(vty, VRRP_XPATH_ENTRY, vrid);
+}
+
+/*
+ * XPath:
+ * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/neigh-advertisement-interval
+ */
+DEFPY_YANG(no_vrrp_neigh_advertisement_interval,
+      no_vrrp_neigh_advertisement_interval_cmd,
+      "no vrrp (1-255)$vrid neigh-advertisement-interval [(10-40950)]",
+      NO_STR VRRP_STR VRRP_VRID_STR VRRP_NEIGH_ADVINT_STR
+      "Neigh advertisement interval in milliseconds; must be multiple of 10")
+{
+	nb_cli_enqueue_change(vty, "./neigh-advertisement-interval", NB_OP_MODIFY,
+			      NULL);
+
+	return nb_cli_apply_changes(vty, VRRP_XPATH_ENTRY, vrid);
+}
+
+void cli_show_neigh_advertisement_interval(struct vty *vty, struct lyd_node *dnode,
+					   bool show_defaults)
+{
+	const char *vrid = yang_dnode_get_string(dnode, "../virtual-router-id");
+	uint16_t advint = yang_dnode_get_uint16(dnode, NULL);
+
+	vty_out(vty, " vrrp %s neigh-advertisement-interval %u\n", vrid,
+		advint * CS2MS);
+}
+
+/*
+ * XPath:
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/virtual-address
  */
 DEFPY_YANG(vrrp_ip,
@@ -306,12 +354,14 @@ DEFPY_YANG(vrrp_autoconfigure,
 /* XXX: yang conversion */
 DEFPY_YANG(vrrp_default,
       vrrp_default_cmd,
-      "[no] vrrp default <advertisement-interval$adv (10-40950)$advint|preempt$p|priority$prio (1-254)$prioval|shutdown$s>",
+      "[no] vrrp default <advertisement-interval$adv (10-40950)$advint|neigh-advertisement-interval$nadv (10-40950)$nadvint|preempt$p|priority$prio (1-254)$prioval|shutdown$s>",
       NO_STR
       VRRP_STR
       "Configure defaults for new VRRP instances\n"
       VRRP_ADVINT_STR
       "Advertisement interval in milliseconds\n"
+      VRRP_NEIGH_ADVINT_STR
+      "Neighbor advertisement interval in milliseconds\n"
       "Preempt mode\n"
       VRRP_PRIORITY_STR
       "Priority value\n"
@@ -326,6 +376,16 @@ DEFPY_YANG(vrrp_default,
 		/* all internal computations are in centiseconds */
 		advint /= CS2MS;
 		vd.advertisement_interval = no ? VRRP_DEFAULT_ADVINT : advint;
+	}
+	if (nadv) {
+		if (nadvint % CS2MS != 0) {
+			vty_out(vty, "%% Value must be a multiple of %u\n",
+				(unsigned int)CS2MS);
+			return CMD_WARNING_CONFIG_FAILED;
+		}
+		/* all internal computations are in centiseconds */
+		nadvint /= CS2MS;
+		vd.neigh_advertisement_interval = no ? VRRP_DEFAULT_NEIGH_ADVINT : nadvint;
 	}
 	if (p)
 		vd.preempt_mode = !no;
@@ -379,6 +439,8 @@ static struct json_object *vrrp_build_json(struct vrrp_vrouter *vr)
 	json_object_string_add(j, "interface", vr->ifp->name);
 	json_object_int_add(j, "advertisementInterval",
 			    vr->advertisement_interval * CS2MS);
+	json_object_int_add(j, "NeighboradvertisementInterval",
+			    vr->neigh_advertisement_interval * CS2MS);
 	/* v4 */
 	json_object_string_add(v4, "interface",
 			       vr->v4->mvl_ifp ? vr->v4->mvl_ifp->name : "");
@@ -503,6 +565,8 @@ static void vrrp_show(struct vty *vty, struct vrrp_vrouter *vr)
 		       vr->accept_mode ? "Yes" : "No");
 	ttable_add_row(tt, "%s|%d ms", "Advertisement Interval",
 		       vr->advertisement_interval * CS2MS);
+	ttable_add_row(tt, "%s|%d ms", "Neighbor Advertisement Interval",
+		       vr->neigh_advertisement_interval * CS2MS);
 	ttable_add_row(tt, "%s|%d ms",
 		       "Master Advertisement Interval (v4)",
 		       vr->v4->master_adver_interval * CS2MS);
@@ -786,6 +850,8 @@ void vrrp_vty_init(void)
 	install_element(INTERFACE_NODE, &no_vrrp_priority_cmd);
 	install_element(INTERFACE_NODE, &vrrp_advertisement_interval_cmd);
 	install_element(INTERFACE_NODE, &no_vrrp_advertisement_interval_cmd);
+	install_element(INTERFACE_NODE, &vrrp_neigh_advertisement_interval_cmd);
+	install_element(INTERFACE_NODE, &no_vrrp_neigh_advertisement_interval_cmd);
 	install_element(INTERFACE_NODE, &vrrp_ip_cmd);
 	install_element(INTERFACE_NODE, &vrrp_ip6_cmd);
 	install_element(INTERFACE_NODE, &vrrp_preempt_cmd);

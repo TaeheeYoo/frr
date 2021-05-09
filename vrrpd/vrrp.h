@@ -51,6 +51,7 @@
 #define VRRP_XPATH "./frr-vrrpd:vrrp/vrrp-group"
 #define VRRP_DEFAULT_PRIORITY 100
 #define VRRP_DEFAULT_ADVINT 100
+#define VRRP_DEFAULT_NEIGH_ADVINT 100
 #define VRRP_DEFAULT_PREEMPT true
 #define VRRP_DEFAULT_ACCEPT true
 #define VRRP_DEFAULT_SHUTDOWN false
@@ -68,6 +69,7 @@ struct vrrp_defaults {
 	uint8_t version;
 	uint8_t priority;
 	uint16_t advertisement_interval;
+	uint16_t neigh_advertisement_interval;
 	bool preempt_mode;
 	bool accept_mode;
 	bool shutdown;
@@ -253,6 +255,12 @@ struct vrrp_vrouter {
 	uint16_t advertisement_interval;
 
 	/*
+	 * ARP/ND time interval between ADVERTISEMENTS (centiseconds). Default is 100
+	 * centiseconds (1 second).
+	 */
+	uint16_t neigh_advertisement_interval;
+
+	/*
 	 * Controls whether a (starting or restarting) higher-priority Backup
 	 * router preempts a lower-priority Master router. Values are True to
 	 * allow preemption and False to prohibit preemption. Default is True.
@@ -343,6 +351,18 @@ void vrrp_set_priority(struct vrrp_vrouter *vr, uint8_t priority);
  */
 void vrrp_set_advertisement_interval(struct vrrp_vrouter *vr,
 				     uint16_t advertisement_interval);
+
+/*
+ * Set Neighbor Advertisement Interval on this Virtual Router.
+ *
+ * vr
+ *    Virtual Router to change priority of
+ *
+ * neigh_advertisement_interval
+ *    New neighbor advertisement interval
+ */
+void vrrp_set_neigh_advertisement_interval(struct vrrp_vrouter *vr,
+					   uint16_t neigh_advertisement_interval);
 
 /*
  * Add an IPvX address to a VRRP Virtual Router.

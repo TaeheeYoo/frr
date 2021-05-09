@@ -579,6 +579,26 @@ static int lib_interface_vrrp_vrrp_group_advertisement_interval_modify(
 }
 
 /*
+ * XPath:
+ * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/neigh-advertisement-interval
+ */
+static int lib_interface_vrrp_vrrp_group_neigh_advertisement_interval_modify(
+	struct nb_cb_modify_args *args)
+{
+	if (args->event != NB_EV_APPLY)
+		return NB_OK;
+
+	struct vrrp_vrouter *vr;
+	uint16_t neigh_advert_int;
+
+	vr = nb_running_get_entry(args->dnode, NULL, true);
+	neigh_advert_int = yang_dnode_get_uint16(args->dnode, NULL);
+	vrrp_set_neigh_advertisement_interval(vr, neigh_advert_int);
+
+	return NB_OK;
+}
+
+/*
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/shutdown
  */
 static int
@@ -651,6 +671,13 @@ const struct frr_yang_module_info frr_vrrpd_info = {
 			.cbs = {
 				.modify = lib_interface_vrrp_vrrp_group_advertisement_interval_modify,
 				.cli_show = cli_show_advertisement_interval,
+			}
+		},
+		{
+			.xpath = "/frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/neigh-advertisement-interval",
+			.cbs = {
+				.modify = lib_interface_vrrp_vrrp_group_neigh_advertisement_interval_modify,
+				.cli_show = cli_show_neigh_advertisement_interval,
 			}
 		},
 		{

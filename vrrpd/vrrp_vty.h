@@ -32,6 +32,8 @@ void cli_show_priority(struct vty *vty, struct lyd_node *dnode,
 		       bool show_defaults);
 void cli_show_advertisement_interval(struct vty *vty, struct lyd_node *dnode,
 				     bool show_defaults);
+void cli_show_neigh_advertisement_interval(struct vty *vty, struct lyd_node *dnode,
+					   bool show_defaults);
 void cli_show_ip(struct vty *vty, struct lyd_node *dnode, bool show_defaults);
 void cli_show_ipv6(struct vty *vty, struct lyd_node *dnode, bool show_defaults);
 void cli_show_preempt(struct vty *vty, struct lyd_node *dnode,

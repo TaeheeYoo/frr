@@ -124,6 +124,17 @@ module frr-vrrpd {
          seconds";
     }
 
+    leaf neigh-advertisement-interval {
+      type uint16 {
+        range "1..4095";
+      }
+      units "centiseconds";
+      default "100";
+      description
+        "Sets the Neighbor interval between successive VRRP
+         advertisements";
+    }
+
     leaf shutdown {
       type boolean;
       default "false";
